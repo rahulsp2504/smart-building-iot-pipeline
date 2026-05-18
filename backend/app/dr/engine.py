@@ -15,9 +15,11 @@ Orchestrates a demand response event end-to-end:
 """
 
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime, timezone
+
 
 from sqlalchemy import text
 
@@ -63,14 +65,14 @@ async def _log_audit(
 ):
     await session.execute(text("""
         INSERT INTO audit_trail (event_type, severity, zone_id, dr_event_id, message, metadata)
-        VALUES (:event_type, :severity, :zone_id, :dr_event_id, :message, :metadata::jsonb)
+        VALUES (:event_type, :severity, :zone_id, :dr_event_id, :message, cast(:metadata as jsonb))
     """), {
         "event_type":  event_type,
         "severity":    severity,
         "zone_id":     zone_id,
         "dr_event_id": dr_event_id,
         "message":     message,
-        "metadata":    str(metadata) if metadata else None,
+        "metadata":    json.dumps(metadata) if metadata else None,
     })
 
 

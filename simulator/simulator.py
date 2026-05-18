@@ -76,6 +76,21 @@ _state = {
 # BACnet setpoint polling
 # ---------------------------------------------------------------------------
 
+def _wait_for_bacnet_health():
+    """Wait for BACnet REST gateway to become healthy on startup."""
+    print("[Simulator] Waiting for BACnet service to be fully ready...")
+    while True:
+        try:
+            resp = requests.get(f"{BACNET_URL}/health", timeout=3)
+            if resp.status_code == 200:
+                print("[Simulator] BACnet service is ready.")
+                break
+        except requests.exceptions.RequestException:
+            pass
+        print("[Simulator] BACnet not ready yet... retrying in 2 seconds.")
+        time.sleep(2)
+
+
 def _fetch_setpoints() -> dict:
     """Poll BACnet device for current setpoints. Returns {zone_id: {cooling, heating}}."""
     try:
@@ -235,6 +250,8 @@ def main():
     print(f" BACnet : {BACNET_URL}")
     print(f" Zones  : {len(ZONES)} | Interval: {PUBLISH_INTERVAL}s")
     print("=" * 60)
+
+    _wait_for_bacnet_health()
 
     client = _build_client()
     client.loop_start()

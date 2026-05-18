@@ -65,6 +65,7 @@ def _on_disconnect(client, userdata, rc, properties=None, reasoncode=None):
 
 
 async def _consume():
+    global _ws_callbacks
     while True:
         try:
             p = await _queue.get()
@@ -73,7 +74,8 @@ async def _consume():
             sensor_type = p.get("sensor_type", "")
             value       = float(p.get("value", 0))
             unit        = p.get("unit", "")
-            ts          = p.get("timestamp", datetime.now(timezone.utc).isoformat())
+            ts_str      = p.get("timestamp", datetime.now(timezone.utc).isoformat())
+            ts          = datetime.fromisoformat(ts_str)
 
             # Persist to TimescaleDB
             try:
@@ -106,7 +108,7 @@ async def _consume():
                 "sensor_type": sensor_type,
                 "value":       value,
                 "unit":        unit,
-                "timestamp":   ts,
+                "timestamp":   ts_str,
             })
             dead = set()
             for cb in list(_ws_callbacks):

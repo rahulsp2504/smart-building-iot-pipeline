@@ -1,0 +1,20 @@
+{
+  "venvPath": "/Users/rahulpandit/Desktop/test/smart-building-iot-pipeline/backend",
+  "venv": ".venv",
+  "pythonVersion": "3.11",
+  "include": [
+    "backend"
+  ],
+  "extraPaths": [
+    "backend"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "backend",
+      "pythonVersion": "3.11",
+      "extraPaths": [
+        "."
+      ]
+    }
+  ]
+}
