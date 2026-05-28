@@ -25,7 +25,7 @@ from sqlalchemy import text
 
 from ..database import AsyncSessionLocal
 from ..ml import predictor
-from ..bacnet_client import write_setpoint, reset_all_setpoints
+from ..bacnet_client import write_setpoint, read_setpoint, reset_all_setpoints
 from . import optimizer
 from . import comfort as comfort_checker
 
@@ -164,15 +164,35 @@ async def trigger_dr_event(
         zone_states.get(zid, {}).get("energy_kw", 0) for zid in ZONE_META
     )
 
-    for write in plan.setpoint_writes:
-        success, detail = await write_setpoint(
-            zone_id=write["zone_id"],
-            property_name=write["property_name"],
-            new_value=write["new_setpoint"],
-            dr_event_id=event_id,
-        )
-        if not success:
-            logger.warning(f"[DR] BACnet write failed for {write['zone_id']}: {detail}")
+    async with AsyncSessionLocal() as session:
+        for write in plan.setpoint_writes:
+            zid = write["zone_id"]
+            prop = write["property_name"]
+            new_val = write["new_setpoint"]
+
+            old_val = await read_setpoint(zone_id=zid, property_name=prop)
+
+            success, detail = await write_setpoint(
+                zone_id=zid,
+                property_name=prop,
+                new_value=new_val,
+                dr_event_id=event_id,
+            )
+            if success:
+                logger.info(f"[DR] Successfully wrote setpoint {new_val} to {zid}. Inserting into setpoint_log.")
+                await session.execute(text("""
+                    INSERT INTO setpoint_log (zone_id, setpoint_type, value_before, value_after, source, dr_event_id)
+                    VALUES (:zone_id, :property_name, :value_before, :value_after, 'dr_engine', :dr_event_id)
+                """), {
+                    "zone_id": zid,
+                    "property_name": prop,
+                    "value_before": old_val,
+                    "value_after": new_val,
+                    "dr_event_id": event_id,
+                })
+                await session.commit()
+            else:
+                logger.warning(f"[DR] BACnet write failed for {zid}: {detail}")
 
     logger.info(f"[DR] {len(plan.setpoint_writes)} setpoints written. Event {event_id[:8]}… active.")
 

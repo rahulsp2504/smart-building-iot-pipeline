@@ -18,8 +18,11 @@ Energy model (inverse of simulator):
 
 from dataclasses import dataclass
 from typing import List, Optional
+import logging
 
 from . import comfort as comfort_checker
+
+logger = logging.getLogger(__name__)
 
 # kW saved per °C of setpoint raise, per zone (calibrated to simulator model)
 HVAC_SENSITIVITY = {
@@ -91,11 +94,16 @@ def compute(
         current_kw   = state.get("energy_kw", 3.0)
 
         # --- Step 2: compute allowable setpoint raise ---
-        allowed, reason = comfort_checker.can_raise_setpoint(
-            current_temp, current_sp, MAX_SETPOINT_RAISE_C, current_co2
-        )
+        comfort_status = comfort_checker.check(zid, current_temp, current_co2, current_hum)
+        
+        skip_reason = None
+        if not comfort_status.within_hard:
+            skip_reason = f"Violating hard comfort limits: {', '.join(comfort_status.violations)}"
+        elif current_co2 > comfort_checker.CO2_SOFT_MAX:
+            skip_reason = f"CO2 ({current_co2} ppm) above soft max; setpoint raise deferred"
 
-        if not allowed:
+        if skip_reason:
+            logger.info(f"Zone {zid} skipped: {skip_reason}")
             actions.append(ZoneAction(
                 zone_id=zid,
                 zone_name=meta.get("zone_name", zid),
@@ -106,7 +114,7 @@ def compute(
                 kw_projected=current_kw,
                 kw_shed=0.0,
                 comfort_bound_hit=True,
-                skip_reason=reason,
+                skip_reason=skip_reason,
             ))
             continue
 
@@ -124,10 +132,32 @@ def compute(
             ))
             continue
 
-        # How much can we shed from this zone?
-        max_raise     = min(MAX_SETPOINT_RAISE_C, (comfort_checker.TEMP_MAX - 0.5) - current_temp)
-        max_raise     = max(0.0, max_raise)
-        max_shed      = max_raise * sens
+        max_raise = min(
+            MAX_SETPOINT_RAISE_C,
+            comfort_checker.TEMP_MAX - current_sp,
+            (comfort_checker.TEMP_MAX - 0.5) - current_temp
+        )
+        max_raise = max(0.0, max_raise)
+
+        logger.info(f"Zone {zid} max allowable raise: {max_raise:.2f}°C")
+
+        if max_raise <= 0:
+            skip_reason = "No headroom to raise setpoint without violating comfort"
+            logger.info(f"Zone {zid} skipped: {skip_reason}")
+            actions.append(ZoneAction(
+                zone_id=zid, zone_name=meta.get("zone_name", zid),
+                predicted_occupancy=int(pred.get("predicted_occupancy", 0)),
+                occupancy_ratio=occ_ratio,
+                kw_before=current_kw,
+                setpoint_delta_c=0.0,
+                kw_projected=current_kw,
+                kw_shed=0.0,
+                comfort_bound_hit=True,
+                skip_reason=skip_reason,
+            ))
+            continue
+
+        max_shed = max_raise * sens
 
         # How much do we need?
         needed_raise  = remaining_kw / sens
