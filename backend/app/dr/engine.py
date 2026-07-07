@@ -234,11 +234,20 @@ async def _post_event_cleanup(
     await asyncio.sleep(duration_minutes * 60)
 
     completed_at = datetime.now(timezone.utc)
-
-    # Measure current energy
     zone_states = get_zone_snapshot()
-    kw_after    = sum(zone_states.get(zid, {}).get("energy_kw", 0) for zid in ZONE_META)
-    actual_shed = max(0.0, kw_before - kw_after)
+
+    # Average last 35 seconds of energy readings — more robust than a single snapshot
+    async with AsyncSessionLocal() as session:
+        rows = await session.execute(text("""
+            SELECT AVG(value) as avg_kw
+            FROM sensor_readings
+            WHERE sensor_type = 'energy_kw'
+              AND timestamp >= NOW() - INTERVAL '35 seconds'
+        """))
+        result = rows.fetchone()
+        kw_after_avg = float(result.avg_kw) if result and result.avg_kw else kw_before
+
+    actual_shed = max(0.0, kw_before - kw_after_avg)
     kwh_avoided = round(actual_shed * duration_minutes / 60, 4)
 
     # Check comfort maintained

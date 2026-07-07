@@ -180,16 +180,23 @@ def _update_co2(occ: int, capacity: int, prev: float) -> float:
 
 def _update_energy(zone: dict, state: dict, temp: float) -> float:
     """
-    Energy drops when HVAC works less (setpoint raised = less cooling needed).
-    Drops proportionally to how close temp is to setpoint.
+    HVAC energy is driven by the gap between outdoor temperature and the
+    cooling setpoint — not distance from 22°C.
+    Raising the setpoint (DR action) narrows that gap → energy drops.
     """
-    occ_ratio     = state["occupancy"] / max(zone["capacity"], 1)
-    lighting      = occ_ratio * 2.5
-    equipment     = occ_ratio * 3.5
-    hvac_effort   = max(0, (temp - state["cooling_setpoint"])) * 0.9  # less work if setpoint raised
-    hvac_base     = abs(temp - 22.0) * 0.4
-    noise         = random.gauss(0, 0.15)
-    total         = zone["base_kw"] + lighting + equipment + hvac_effort + hvac_base + noise
+    hour         = _hour_float()
+    outdoor_temp = 18.0 + 6.0 * math.sin(math.pi * (hour - 6) / 12)
+
+    occ_ratio  = state["occupancy"] / max(zone["capacity"], 1)
+    lighting   = occ_ratio * 2.5
+    equipment  = occ_ratio * 3.5
+
+    cooling_load    = max(0.0, outdoor_temp - state["cooling_setpoint"]) * 1.3
+    temp_correction = max(0.0, temp - state["cooling_setpoint"]) * 0.9
+    hvac_fan        = 0.8
+
+    noise = random.gauss(0, 0.12)
+    total = zone["base_kw"] + lighting + equipment + cooling_load + temp_correction + hvac_fan + noise
     return round(max(0.8, total), 3)
 
 
