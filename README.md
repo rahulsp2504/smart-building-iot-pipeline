@@ -258,6 +258,7 @@ Watch setpoints change on the BACnet device, energy drop in the dashboard, and t
 ## Dashboard
 
 ![Dashboard](docs/dashboard.png)
+![DR Control Panel](docs/dashboard_dr.png)
 
 The live control dashboard shows real-time WebSocket-streamed data across all 4 zones:
 
