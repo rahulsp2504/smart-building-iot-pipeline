@@ -1,0 +1,4 @@
+Built open-source demand response middleware (Python, MQTT, TimescaleDB, FastAPI, BACnet, React) that
+bridges cheap IoT sensors to commercial HVAC controllers — enabling small/mid-size buildings to participate
+in utility DR programs without $500K BMS platforms; closed-loop control loop validated across 7 test
+scenarios with 13.2 kW actual load shed and 1.1 kWh avoided per 5-min event.

@@ -1,5 +1,12 @@
 # smart-building-iot-pipeline
 
+![CI](https://github.com/rahulsp2504/smart-building-iot-pipeline/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)
+![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PG16-orange)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
 > **Comfort-constrained, occupancy-aware demand response middleware for MQTT-instrumented commercial buildings.**
 >
 > Small and mid-size commercial buildings want to participate in utility Demand Response programs — but most can't. Participating requires automation that can shed load within minutes of a DR signal. Full building management systems (Siemens, Johnson Controls) solve this for $50K–$500K. This project solves it for the cost of a $6/month cloud droplet and cheap MQTT sensors.
@@ -247,6 +254,19 @@ curl -X POST http://localhost:8000/dr/event \
 ```
 
 Watch setpoints change on the BACnet device, energy drop in the dashboard, and the event complete with `kwh_avoided` populated after 5 minutes.
+
+## Dashboard
+
+![Dashboard](docs/dashboard.png)
+
+The live control dashboard shows real-time WebSocket-streamed data across all 4 zones:
+
+- **Zone cards** — per-zone temperature, CO₂, humidity, occupancy, energy draw, and ASHRAE comfort status with warning indicators
+- **Sensor charts** — rolling time-series (temperature, CO₂, energy, humidity) with ASHRAE 62.1 reference lines
+- **DR Control Panel** — trigger demand response events, see the per-zone shedding plan, watch projected kW live
+- **Occupancy Forecast** — ML predictions 30 minutes ahead per zone, flagging DR candidates
+- **Audit Log** — every system event with severity, timestamp, and dr_event_id linkage
+- **Building Summary** — total power draw and cumulative kWh avoided counter
 
 ---
 

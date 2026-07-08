@@ -49,6 +49,10 @@ async def zone_readings(
     limit: int = Query(300, ge=1, le=2000),
     db: AsyncSession = Depends(get_db),
 ):
+    zone_check = await db.execute(text("SELECT zone_id FROM zones WHERE zone_id=:zid"), {"zid": zone_id})
+    if not zone_check.fetchone():
+        raise HTTPException(404, "Zone not found")
+
     since  = datetime.now(timezone.utc) - timedelta(hours=hours)
     sql    = "SELECT zone_id, sensor_type, value, unit, timestamp FROM sensor_readings WHERE zone_id=:zid AND timestamp>=:since"
     params = {"zid": zone_id, "since": since, "limit": limit}
